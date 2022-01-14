@@ -6,25 +6,43 @@ public class MainCharacter : MonoBehaviour
 {
 
 
-    private Animator mcAnimator;
-    private Rigidbody2D mcRigidbody2D;
-    private BoxCollider2D mcBoxCollider2D;
+    private protected Animator mcAnimator;
+    private protected Rigidbody2D mcRigidbody2D;
+    private protected BoxCollider2D mcBoxCollider2D;
 
-    [SerializeField] private bool _isGrounded;
+    [SerializeField] private protected CharacterSObject MainCharacterSObject;
 
-    bool test;
-    public bool IsGrounded
+    [SerializeField] private protected LayerMask GameGround;
+
+
+    private string _name;
+    private float _speed;
+
+    public string Name
     {
         get
         {
-            return _isGrounded;
+            return _name;
         }
         set
         {
-            _isGrounded = value;
+            _name = value;
+        }
+    }
+    public float Speed
+    {
+        get
+        {
+            return _speed;
+        }
+        set
+        {
+            _speed = value;
         }
     }
 
+
+    private float _moveInput;
 
     void Start()
     {
@@ -36,96 +54,86 @@ public class MainCharacter : MonoBehaviour
         mcAnimator = gameObject.GetComponent<Animator>();
         mcRigidbody2D = gameObject.GetComponent<Rigidbody2D>();
         mcBoxCollider2D = gameObject.GetComponent<BoxCollider2D>();
+
+
+        Name = MainCharacterSObject.Name;
+        Speed = MainCharacterSObject.Speed;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        CheckInput();
-    }
-    private void CheckInput()
-    {
-        float moveInput = Input.GetAxisRaw("Horizontal");
-        float heightInput = Input.GetAxisRaw("Jump");
-        if (moveInput > 0 && !test)
-        {
-            Move(Vector3.right, false);
-            return;
-        }
-        else if (moveInput < 0 && !test)
-        {
-            Move(Vector3.left, false);
-            return;
-        }
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            test = true;
-            Debug.Log("Jumped");
-            mcRigidbody2D.AddForce(Vector2.up*1500f*Time.deltaTime,ForceMode2D.Impulse);
-            mcAnimator.SetBool("_isGrounded", false);
-            _isGrounded = false;
-            //mcRigidbody2D.AddForce(Vector2.up * 50f * Time.deltaTime,ForceMode2D.Impulse);
-        }
-        if (IsGrounded && !test)
-        {
-            Move(Vector3.zero, false);
-        }
+        CheckMovement();
     }
     private void FixedUpdate()
     {
-
+        //Checking directional movements.
+        //if (true) 
+        //{
+            mcRigidbody2D.velocity = new Vector2(_moveInput * Speed, mcRigidbody2D.velocity.y);
+        //}
     }
-    public void Move(Vector3 direction, bool jump)
+    private void LateUpdate()
     {
-        if (IsGrounded)
+        //Switching direction of player.
+        if (_moveInput > 0)
         {
-            mcAnimator.SetBool("_isGrounded", true);
-            switch (direction.x)
-            {
-                case 1:
-
-                    gameObject.transform.Translate(direction * 6.0f * Time.deltaTime);
-                    mcAnimator.SetFloat("_speed", 1);
-                    FlipAnimation(false);
-                    break;
-                case -1:
-                    gameObject.transform.Translate(direction * 6.0f * Time.deltaTime);
-                    mcAnimator.SetFloat("_speed", 1);
-                    FlipAnimation(true);
-                    break;
-                default:
-                    mcAnimator.SetFloat("_speed", 0);
-                    break;
-            }
+            FlipAnimation(false);
         }
-
+        else if (_moveInput < 0)
+        {
+            FlipAnimation(true);
+        }
     }
 
-
-
+    private void CheckMovement()
+    {
+        _moveInput = Input.GetAxis("Horizontal");
+        mcRigidbody2D.constraints = RigidbodyConstraints2D.FreezeRotation;
+        //mcRigidbody2D.velocity = new Vector2(_moveInput * Speed, mcRigidbody2D.velocity.y);
+        if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())
+        {
+            mcRigidbody2D.velocity = Vector2.up * 10;
+        }
+        if (Mathf.Abs(_moveInput) > 0 && IsGrounded())
+        {
+            mcAnimator.SetBool("_isRunning", true);
+        }
+        else
+        {
+            mcAnimator.SetBool("_isRunning", false);
+        }
+        if (mcRigidbody2D.velocity.y == 0 || IsGrounded())
+        {
+            mcAnimator.SetBool("_isFalling", false);
+            mcAnimator.SetBool("_isJumping", false);
+        }
+        if (mcRigidbody2D.velocity.y > 0 && !IsGrounded())
+        {
+            mcAnimator.SetBool("_isJumping", true);
+        }
+        if (mcRigidbody2D.velocity.y < 0 && !IsGrounded())
+        {
+            mcAnimator.SetBool("_isJumping", false);
+            mcAnimator.SetBool("_isFalling", true);
+        }
+    }
+    private bool IsGrounded()
+    {
+        float boxHieght = 0.1f;
+        RaycastHit2D mcRayHit = Physics2D.BoxCast(mcBoxCollider2D.bounds.center, mcBoxCollider2D.bounds.size, 0f, Vector2.down, boxHieght, GameGround);
+        Debug.Log(mcRayHit.collider);
+        return mcRayHit.collider != null;
+    }
 
     private void FlipAnimation(bool isFlipped)
     {
-        if(isFlipped)
+        if (isFlipped)
         {
             gameObject.transform.localScale = new Vector3(-1, 1, 1);
         }
         else
         {
             gameObject.transform.localScale = Vector3.one;
-        }
-    }
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (collision.gameObject.CompareTag("Ground"))
-        {
-            IsGrounded = true;
-            test = false;
-        }
-        else
-        {
-            IsGrounded = false;
-            test = true;
         }
     }
 }
