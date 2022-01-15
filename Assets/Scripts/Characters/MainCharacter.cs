@@ -43,6 +43,16 @@ public class MainCharacter : MonoBehaviour
 
 
     private float _moveInput;
+    private bool _isFacingRight;
+
+    [Header("Wall Jumping")]
+
+    [SerializeField] private float _wallJumpTime = 0.2f;  // The delay which allows us to jump.
+    [SerializeField] private float _wallSlideSpeed = 2f;
+    [SerializeField] private float _wallDistance = 0.55f;
+    [SerializeField] private bool _isWallSliding;
+    RaycastHit2D _wallCheckHit;
+    float _jumpTime; // A float to register the full elapsed time with delay.
 
     void Start()
     {
@@ -66,11 +76,36 @@ public class MainCharacter : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        //Checking directional movements.
-        //if (true) 
-        //{
             mcRigidbody2D.velocity = new Vector2(_moveInput * Speed, mcRigidbody2D.velocity.y);
+
+
         //}
+
+        //Wall Jump
+        if(_isFacingRight)
+        {
+            _wallCheckHit = Physics2D.Raycast(gameObject.transform.position, new Vector2(_wallDistance, 0), _wallDistance, GameGround);
+        }
+        else
+        {
+            _wallCheckHit = Physics2D.Raycast(gameObject.transform.position, new Vector2(-_wallDistance, 0), _wallDistance, GameGround);
+        }
+        if (_wallCheckHit && !IsGrounded() && _moveInput != 0)
+        {
+            _isWallSliding = true;
+            mcAnimator.SetBool("_isSliding", true);
+            _jumpTime = Time.time + _wallJumpTime;
+        }
+        else if (_jumpTime < Time.time)
+        {
+            _isWallSliding = false;
+            mcAnimator.SetBool("_isSliding", false);
+        }
+        if (_isWallSliding)
+        {
+            mcRigidbody2D.velocity = new Vector2(mcRigidbody2D.velocity.x, Mathf.Clamp(mcRigidbody2D.velocity.y, _wallSlideSpeed, float.MaxValue));
+        }
+
     }
     private void LateUpdate()
     {
@@ -90,7 +125,7 @@ public class MainCharacter : MonoBehaviour
         _moveInput = Input.GetAxis("Horizontal");
         mcRigidbody2D.constraints = RigidbodyConstraints2D.FreezeRotation;
         //mcRigidbody2D.velocity = new Vector2(_moveInput * Speed, mcRigidbody2D.velocity.y);
-        if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())
+        if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())// || _isWallSliding && Input.GetKeyDown(KeyCode.Space)) 
         {
             mcRigidbody2D.velocity = Vector2.up * 10;
         }
@@ -130,10 +165,12 @@ public class MainCharacter : MonoBehaviour
         if (isFlipped)
         {
             gameObject.transform.localScale = new Vector3(-1, 1, 1);
+            _isFacingRight = false;
         }
         else
         {
             gameObject.transform.localScale = Vector3.one;
+            _isFacingRight = true;
         }
     }
 }
