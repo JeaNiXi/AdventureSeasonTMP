@@ -13,7 +13,7 @@ public class CharacterSObject : ScriptableObject
 
 
     [SerializeField] private float _speed;
-
+    [SerializeField] private float _jumpForce;
 
 
 

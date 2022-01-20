@@ -64,11 +64,11 @@ public class MainCharacter : MonoBehaviour
 
     [Header("Wall Jumping")]
 
-    private float _wallJumpTime = 0.2f;  // The delay which allows us to jump.
+    //private float _wallJumpTime = 0.2f;  // The delay which allows us to jump.
     private float _wallSlideSpeed = 2f;
-    private float _wallDistance = 0.2f;
-    RaycastHit2D _wallCheckHit;
-    float _jumpTime; // A float to register the full elapsed time with delay.
+    //private float _wallDistance = 0.2f;
+    //RaycastHit2D _wallCheckHit;
+    //float _jumpTime; // A float to register the full elapsed time with delay.
 
     void Start()
     {
@@ -114,16 +114,21 @@ public class MainCharacter : MonoBehaviour
         if (isFlipped)
         {
             gameObject.transform.localScale = new Vector3(-1, 1, 1);
+            //mcSpriteRenderer.flipX = true;
+            //gameObject.transform.eulerAngles = new Vector3(0, 180, 0);
             _isFacingRight = false;
         }
         else
         {
+            //gameObject.transform.eulerAngles = new Vector3(0, 0, 0);
+            //mcSpriteRenderer.flipX = false;
             gameObject.transform.localScale = Vector3.one;
             _isFacingRight = true;
         }
     }
     private void LateUpdate()
     {
+
 
     }
 
@@ -135,6 +140,7 @@ public class MainCharacter : MonoBehaviour
 
             mcRigidbody2D.bodyType = RigidbodyType2D.Kinematic;
             mcRigidbody2D.velocity = Vector2.zero;
+
             if ((Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.UpArrow)) && Input.GetAxisRaw("Horizontal") == 0) 
             {
                 mcMovement = Movement.ALLOWED;
@@ -167,6 +173,7 @@ public class MainCharacter : MonoBehaviour
         if (mcMovement != Movement.RESTRICTED)
         {
             _moveInput = Input.GetAxis("Horizontal");
+
             mcRigidbody2D.constraints = RigidbodyConstraints2D.FreezeRotation;
             mcRigidbody2D.velocity = new Vector2(_moveInput * Speed, mcRigidbody2D.velocity.y);
         }
@@ -312,7 +319,7 @@ public class MainCharacter : MonoBehaviour
     private bool WallHitCheck()
     {
 
-        float boxWidth = 0.1f;
+        //float boxWidth = 0.1f;
         if (_isFacingRight)
         {
             //RaycastHit2D mcRayWallHit = Physics2D.BoxCast(mcBoxCollider2D.bounds.center, mcBoxCollider2D.bounds.size, 0f, Vector2.right, boxWidth, GameGround);
@@ -329,7 +336,7 @@ public class MainCharacter : MonoBehaviour
     private bool GrabPointCheck()
     {
 
-        float boxWidth = 0.1f;
+        //float boxWidth = 0.1f;
         if (_isFacingRight)
         {
             //RaycastHit2D mcRayWallHit = Physics2D.BoxCast(mcBoxCollider2D.bounds.center, mcBoxCollider2D.bounds.size, 0f, Vector2.right, boxWidth, GameGround);
