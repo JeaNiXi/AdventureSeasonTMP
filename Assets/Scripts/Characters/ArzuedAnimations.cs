@@ -27,11 +27,18 @@ public class ArzuedAnimations : MonoBehaviour
         ArzuedAnimator.SetBool("_isMoving", ArzuedBaseScript.IsAbleToMove);
         ArzuedAnimator.SetBool("_isJumping", ArzuedBaseScript.IsJumping);
         ArzuedAnimator.SetBool("_isFalling", ArzuedBaseScript.IsFalling);
+        ArzuedAnimator.SetBool("_isGrabbingEdge", ArzuedBaseScript.IsGrabbingEdge);
+        ArzuedAnimator.SetBool("_isHanging", ArzuedBaseScript.IsHanging);
         ArzuedAnimator.SetBool("_isWallSliding", ArzuedBaseScript.IsWallSliding);
         ArzuedAnimator.SetBool("_isGrounded", ArzuedCollisionsScript.IsGrounded);
     }
     public void Flip(bool flipBool)
     {
         ArzuedSpriteRenderer.flipX = flipBool;
+    }
+    public void SetHangingStateTrue()
+    {
+        ArzuedBaseScript.IsHanging = true;
+        ArzuedBaseScript.IsGrabbingEdge = false;
     }
 }

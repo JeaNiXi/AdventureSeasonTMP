@@ -9,6 +9,21 @@ public class Arzued : MonoBehaviour
     ArzuedAnimations ArzuedAnimationScript;
     ArzuedCollisions ArzuedCollisionsScript;
 
+
+    enum Movement
+    {
+        RESTRICTED,
+        ALLOWED
+    }
+    enum Direction
+    {
+        RIGHT,
+        LEFT
+    }
+
+    [SerializeField] Movement arzuedMovement = Movement.ALLOWED;
+    [SerializeField] Direction arzuedDirection = Direction.RIGHT;
+
     // Character vars.
 
     //private string _name = "Arzued";
@@ -29,6 +44,8 @@ public class Arzued : MonoBehaviour
     private bool _isMoving;
     private bool _isJumping;
     private bool _isFalling;
+    [SerializeField] private bool _isGrabbingEdge;
+    [SerializeField] private bool _isHanging;
     public bool _isWallSliding;
     public bool _isWallJumping;
 
@@ -84,6 +101,28 @@ public class Arzued : MonoBehaviour
             _isWallSliding = value;
         }
     }
+    public bool IsGrabbingEdge
+    {
+        get
+        {
+            return _isGrabbingEdge;
+        }
+        set
+        {
+            _isGrabbingEdge = value;
+        }
+    }
+    public bool IsHanging
+    {
+        get
+        {
+            return _isHanging;
+        }
+        set
+        {
+            _isHanging = value;
+        }
+    }
 
     private void Start()
     {
@@ -106,11 +145,38 @@ public class Arzued : MonoBehaviour
 
     private void Update()
     {
-        // Basic horizontal movement.
-        _xInput = Input.GetAxis("Horizontal");
-        _yInput = Input.GetAxis("Vertical");
-        _inputVector = new Vector2(_xInput, _yInput);
+        if(arzuedMovement==Movement.RESTRICTED)
+        {
+            if(Input.GetButtonDown("Jump"))
+            {
+                IsHanging = false;
+                IsGrabbingEdge = false;
+                IsJumping = true;
+                Debug.Log("Do jump grab");
+                arzuedMovement = Movement.ALLOWED;
+                Jump(Vector2.up, _jumpForce);
+            }
+            if ((Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow) && _xInput == 0))
+            {
+                arzuedMovement = Movement.ALLOWED;
+            }
+        }
+        else
+        {
+            ArzuedRigidbody2D.bodyType = RigidbodyType2D.Dynamic;
+            IsHanging = false;
+            IsGrabbingEdge = false;
+        }
 
+
+        // Basic horizontal movement.
+        if (arzuedMovement != Movement.RESTRICTED)
+        {
+            _xInput = Input.GetAxis("Horizontal");
+            _yInput = Input.GetAxis("Vertical");
+            _inputVector = new Vector2(_xInput, _yInput);
+
+        }
         if (!_isWallSliding || (!ArzuedCollisionsScript.IsGrounded && _inputVector.y != 0))
         {
             Move(_inputVector);
@@ -118,13 +184,13 @@ public class Arzued : MonoBehaviour
 
 
         // Check for jumping.
-        if ((Input.GetButtonDown("Jump") && ArzuedCollisionsScript.IsGrounded))
+        if (Input.GetButtonDown("Jump") && ArzuedCollisionsScript.IsGrounded && arzuedMovement != Movement.RESTRICTED)
         {
             Jump(Vector2.up, _jumpForce);
         }
 
         // Check for jumping from wall.
-        if (Input.GetButtonDown("Jump") && _isWallSliding)
+        if (Input.GetButtonDown("Jump") && _isWallSliding && arzuedMovement != Movement.RESTRICTED)
         {
             WallJump();
         }
@@ -163,7 +229,7 @@ public class Arzued : MonoBehaviour
         }
 
         // Check for wall sliding.
-        if ((ArzuedCollisionsScript.IsOnLeftWall && _inputVector.x < 0 && !ArzuedCollisionsScript.IsGrounded) || (ArzuedCollisionsScript.IsOnRightWall && _inputVector.x > 0 && !ArzuedCollisionsScript.IsGrounded))
+        if ((ArzuedCollisionsScript.IsOnLeftWall && _inputVector.x < 0 && !ArzuedCollisionsScript.IsGrounded && !ArzuedCollisionsScript.IsHittingHead) || (ArzuedCollisionsScript.IsOnRightWall && _inputVector.x > 0 && !ArzuedCollisionsScript.IsGrounded && !ArzuedCollisionsScript.IsHittingHead))
         {
             _isWallSliding = true;
             _isFalling = false;
@@ -178,6 +244,10 @@ public class Arzued : MonoBehaviour
         {
             _isWallSliding = false;
         }
+        if (((ArzuedCollisionsScript.IsGrabbingRight && arzuedDirection == Direction.RIGHT) || (ArzuedCollisionsScript.IsGrabbingLeft && arzuedDirection == Direction.LEFT)) && !IsJumping && Mathf.Abs(_inputVector.x) > 0) 
+        {
+            GrabEdge();
+        }
     }
 
     // Basic Movement Functions.
@@ -190,12 +260,14 @@ public class Arzued : MonoBehaviour
         }
         if (_inputVector.x > 0)
         {
+            arzuedDirection = Direction.RIGHT;
             ArzuedAnimationScript.Flip(false);
             _isMoving = true;
             _isIdle = false;
         }
         else if (_inputVector.x < 0)
         {
+            arzuedDirection = Direction.LEFT;
             ArzuedAnimationScript.Flip(true);
             _isMoving = true;
             _isIdle = false;
@@ -214,7 +286,6 @@ public class Arzued : MonoBehaviour
     {
         if (_inputVector.x != 0 && !_isWallJumping && ArzuedRigidbody2D.velocity.y <= 0) //!Input.GetButton("Jump"))
         {
-            Debug.Log("wall slide working");
             ArzuedRigidbody2D.velocity = Vector2.up * -_wallSlideSpeed;
         }
     }
@@ -240,7 +311,24 @@ public class Arzued : MonoBehaviour
     // Wall Jumping from one wall to another bug can occur. If the wall slide is not enabled in time.
     //
     // Enumarators
+    private void GrabEdge()
+    {
+        _isFalling = false;
+        _isWallSliding = false;
+        _isMoving = false;
+        _isIdle = false;
+        if (!IsHanging)
+        {
+            _isGrabbingEdge = true;
+        }
 
+        arzuedMovement = Movement.RESTRICTED;
+        //ArzuedRigidbody2D.constraints = RigidbodyConstraints2D.FreezeAll;
+        ArzuedRigidbody2D.bodyType = RigidbodyType2D.Kinematic;
+        ArzuedRigidbody2D.velocity = Vector2.zero;
+    }
+
+    
     private IEnumerator DisableMovement(float time)
     {
         _canMove = false;
