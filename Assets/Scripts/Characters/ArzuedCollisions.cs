@@ -21,7 +21,7 @@ public class ArzuedCollisions : MonoBehaviour
     [Space]
     [Header("Collisions")]
 
-    private float collisionRadius = 0.3f;
+    private float collisionRadius = 0.33f;
     private float sideRadius = 0.08f;
     private float grabRagius = 0.10f;
     private Vector3 boxSize = new Vector3(0.5f,0.5f,0.5f);

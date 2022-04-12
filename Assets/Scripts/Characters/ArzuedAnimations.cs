@@ -8,6 +8,7 @@ public class ArzuedAnimations : MonoBehaviour
     private SpriteRenderer ArzuedSpriteRenderer;
     private Arzued ArzuedBaseScript;
     private ArzuedCollisions ArzuedCollisionsScript;
+    //private Rigidbody2D ArzuedRigidbody2D;
 
     private void Start()
     {
@@ -19,6 +20,7 @@ public class ArzuedAnimations : MonoBehaviour
         ArzuedSpriteRenderer = GetComponent<SpriteRenderer>();
         ArzuedBaseScript = GetComponentInParent<Arzued>();
         ArzuedCollisionsScript = GetComponentInParent<ArzuedCollisions>();
+        //ArzuedRigidbody2D = GetComponentInParent<Rigidbody2D>();
     }
 
     private void Update()
@@ -29,7 +31,11 @@ public class ArzuedAnimations : MonoBehaviour
         ArzuedAnimator.SetBool("_isFalling", ArzuedBaseScript.IsFalling);
         ArzuedAnimator.SetBool("_isGrabbingEdge", ArzuedBaseScript.IsGrabbingEdge);
         ArzuedAnimator.SetBool("_isHanging", ArzuedBaseScript.IsHanging);
+        ArzuedAnimator.SetBool("_isSliding", ArzuedBaseScript.IsSliding);
+        ArzuedAnimator.SetBool("_isDashing", ArzuedBaseScript.IsDashing);
         ArzuedAnimator.SetBool("_isWallSliding", ArzuedBaseScript.IsWallSliding);
+        ArzuedAnimator.SetBool("_isAttacking", ArzuedBaseScript.IsAttacking);
+        ArzuedAnimator.SetBool("_isDashAttacking", ArzuedBaseScript.IsDashAttacking);
         ArzuedAnimator.SetBool("_isGrounded", ArzuedCollisionsScript.IsGrounded);
     }
     public void Flip(bool flipBool)
@@ -40,5 +46,24 @@ public class ArzuedAnimations : MonoBehaviour
     {
         ArzuedBaseScript.IsHanging = true;
         ArzuedBaseScript.IsGrabbingEdge = false;
+        ArzuedBaseScript.IsSliding = false;
+    }
+    public void AllowMovement()
+    {
+        ArzuedBaseScript.CanMove = true;
+        ArzuedBaseScript.CanAttack = true;
+        ArzuedBaseScript.CanDashAttack = false;
+    }
+    public void StopAttack()
+    {
+        ArzuedBaseScript.IsAttacking = false;
+        ArzuedBaseScript.CanMove = true;
+    }
+    public void StopDashAttack()
+    {
+        ArzuedBaseScript.CanDashAttack = false;
+        ArzuedBaseScript.IsDashAttacking = false;
+        ArzuedBaseScript.CanAttack = true;
+        ArzuedBaseScript.CanMove = true;
     }
 }

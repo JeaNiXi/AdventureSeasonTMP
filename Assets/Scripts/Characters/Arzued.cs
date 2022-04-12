@@ -6,6 +6,7 @@ public class Arzued : MonoBehaviour
 {
     // Adding basic connections.
     Rigidbody2D ArzuedRigidbody2D;
+    BoxCollider2D ArzuedBoxCollider2D;
     ArzuedAnimations ArzuedAnimationScript;
     ArzuedCollisions ArzuedCollisionsScript;
 
@@ -31,6 +32,10 @@ public class Arzued : MonoBehaviour
     private float _jumpForce = 10.0f;
     private float _wallSlideSpeed = 2.0f;
     private float _wallJumpForce = 10.0f;
+    private float _slideTime = 0.6f;
+    private float _dashAnimationTime = 0.1f;
+    private float _dashStopTime = 0.3f;
+    private float _dashImpulse = 10.0f;
 
     // Naming code vars.
     private float _xInput;
@@ -39,17 +44,36 @@ public class Arzued : MonoBehaviour
     private Vector2 _wallJumpVector;
 
     // Booleans
-    private bool _canMove;
-    private bool _isIdle;
+    [SerializeField] private bool _canMove;
+    [SerializeField] private bool _isIdle;
     private bool _isMoving;
     private bool _isJumping;
     private bool _isFalling;
     [SerializeField] private bool _isGrabbingEdge;
     [SerializeField] private bool _isHanging;
+    private bool _hasDashJumped;
+    private bool _isSliding;
+    private bool _isDashing;
+    private bool _isAttacking;
+    private bool _canAttack;
+    private bool _isDashAttacking;
+    [SerializeField] private bool _canDashAttack;
+
     public bool _isWallSliding;
     public bool _isWallJumping;
 
     // Properties
+    public bool CanMove
+    {
+        get
+        {
+            return _canMove;
+        }
+        set
+        {
+            _canMove = value;
+        }
+    }
     public bool IsIdle
     {
         get
@@ -59,6 +83,17 @@ public class Arzued : MonoBehaviour
         set
         {
             _isIdle = value;
+        }
+    }
+    public bool IsMoving
+    {
+        get
+        {
+            return _isMoving;
+        }
+        set
+        {
+            _isMoving = value;
         }
     }
     public bool IsAbleToMove
@@ -123,15 +158,83 @@ public class Arzued : MonoBehaviour
             _isHanging = value;
         }
     }
+    public bool IsSliding
+    {
+        get
+        {
+            return _isSliding;
+        }
+        set
+        {
+            _isSliding = value;
+        }
+    }
+    public bool IsDashing
+    {
+        get
+        {
+            return _isDashing;
+        }
+        set
+        {
+            _isDashing = value;
+        }
+    }
+    public bool IsAttacking
+    {
+        get
+        {
+            return _isAttacking;
+        }
+        set
+        {
+            _isAttacking = value;
+        }
+    }
+    public bool CanAttack
+    {
+        get
+        {
+            return _canAttack;
+        }
+        set
+        {
+            _canAttack = value;
+        }
+    }
+    public bool IsDashAttacking
+    {
+        get
+        {
+            return _isDashAttacking;
+        }
+        set
+        {
+            _isDashAttacking = value;
+        }
+    }
+    public bool CanDashAttack
+    {
+        get
+        {
+            return _canDashAttack;
+        }
+        set
+        {
+            _canDashAttack = value;
+        }
+    }
 
     private void Start()
     {
         Initialize();
+        //Time.timeScale = 0.2f;
     }
 
     private void Initialize()
     {
         ArzuedRigidbody2D = gameObject.GetComponent<Rigidbody2D>();
+        ArzuedBoxCollider2D = gameObject.GetComponent<BoxCollider2D>();
         ArzuedAnimationScript = gameObject.GetComponentInChildren<ArzuedAnimations>();
         ArzuedCollisionsScript = gameObject.GetComponent<ArzuedCollisions>();
 
@@ -141,13 +244,16 @@ public class Arzued : MonoBehaviour
     private void StartGame()
     {
         _canMove = true;
+        _canAttack = true;
     }
 
     private void Update()
     {
-        if(arzuedMovement==Movement.RESTRICTED)
+        //Debug.Log(ArzuedRigidbody2D.velocity.y);
+        //ArzuedRigidbody2D.constraints = RigidbodyConstraints2D.FreezeRotation;
+        if (arzuedMovement == Movement.RESTRICTED)
         {
-            if(Input.GetButtonDown("Jump"))
+            if (Input.GetButtonDown("Jump"))
             {
                 IsHanging = false;
                 IsGrabbingEdge = false;
@@ -160,17 +266,26 @@ public class Arzued : MonoBehaviour
             {
                 arzuedMovement = Movement.ALLOWED;
             }
+            if (IsFalling)
+            {
+                IsHanging = false;
+                IsGrabbingEdge = false;
+                arzuedMovement = Movement.ALLOWED;
+            }
         }
         else
         {
-            ArzuedRigidbody2D.bodyType = RigidbodyType2D.Dynamic;
-            IsHanging = false;
-            IsGrabbingEdge = false;
+            if (!IsAttacking)
+            {
+                ArzuedRigidbody2D.bodyType = RigidbodyType2D.Dynamic;
+                IsHanging = false;
+                IsGrabbingEdge = false;
+            }
         }
 
 
         // Basic horizontal movement.
-        if (arzuedMovement != Movement.RESTRICTED)
+        if (arzuedMovement != Movement.RESTRICTED && CanMove)
         {
             _xInput = Input.GetAxis("Horizontal");
             _yInput = Input.GetAxis("Vertical");
@@ -184,7 +299,7 @@ public class Arzued : MonoBehaviour
 
 
         // Check for jumping.
-        if (Input.GetButtonDown("Jump") && ArzuedCollisionsScript.IsGrounded && arzuedMovement != Movement.RESTRICTED)
+        if (Input.GetButtonDown("Jump") && ArzuedCollisionsScript.IsGrounded && arzuedMovement != Movement.RESTRICTED && !IsSliding && !IsDashing && CanMove && !IsAttacking)
         {
             Jump(Vector2.up, _jumpForce);
         }
@@ -195,12 +310,32 @@ public class Arzued : MonoBehaviour
             WallJump();
         }
 
+        // Check for dashing while jumping.
+
+        if (Input.GetButtonDown("Fire2") && !ArzuedCollisionsScript.IsGrounded && !_hasDashJumped && !IsWallSliding && !IsHanging)
+        {
+            DashJump();
+        }
+
+        // Check for sliding.
+        if (Input.GetKeyDown(KeyCode.LeftControl) && ArzuedCollisionsScript.IsGrounded && !IsHanging && Mathf.Abs(ArzuedRigidbody2D.velocity.y) < 1f && !IsIdle && !IsWallSliding && !IsDashing && !IsSliding && CanMove)
+        {
+            Slide();
+        }
+        // Check for sprinting
+        if (Input.GetKeyDown(KeyCode.LeftShift) && ArzuedCollisionsScript.IsGrounded && !IsHanging && Mathf.Abs(ArzuedRigidbody2D.velocity.y) < 1f && !IsIdle && !IsWallSliding && !IsDashing && !IsSliding && CanMove)
+        {
+            Dash();
+        }
         // Check for Jumping/Falling
         if (ArzuedRigidbody2D.velocity.y > 0 && !ArzuedCollisionsScript.IsGrounded)
         {
             _isJumping = true;
             _isFalling = false;
             _isIdle = false;
+            IsSliding = false;
+            IsHanging = false; // added
+            CanMove = true;
         }
         if (ArzuedRigidbody2D.velocity.y < 0 && !ArzuedCollisionsScript.IsGrounded)
         {
@@ -208,14 +343,31 @@ public class Arzued : MonoBehaviour
             _isJumping = false;
             _isMoving = false;
             _isIdle = false;
+            _isSliding = false;
+            CanMove = true;
         }
-
+        //// Check for sliding or dashing up or down.
+        if (Mathf.Abs(ArzuedRigidbody2D.velocity.y) > 1f && ArzuedCollisionsScript.IsGrounded && (IsSliding || IsDashing))
+        {
+            Debug.Log("sliding up");
+            if (IsSliding)
+            {
+                IsSliding = false;
+            }
+            else
+            {
+                IsDashing = false;
+            }
+            ArzuedRigidbody2D.velocity = Vector2.zero;
+            //    CanMove = false;
+        }
         // Check if character is grounded.
         if (ArzuedCollisionsScript.IsGrounded)
         {
             _isFalling = false;
             _isJumping = false;
             _isWallSliding = false;
+            ResetDash();
         }
         else
         {
@@ -223,7 +375,7 @@ public class Arzued : MonoBehaviour
         }
 
         // Check if character is idle.
-        if (_inputVector == Vector2.zero && !_isFalling)
+        if (_inputVector == Vector2.zero && !_isFalling && !IsAttacking)
         {
             _isIdle = true;
         }
@@ -247,6 +399,25 @@ public class Arzued : MonoBehaviour
         if (((ArzuedCollisionsScript.IsGrabbingRight && arzuedDirection == Direction.RIGHT) || (ArzuedCollisionsScript.IsGrabbingLeft && arzuedDirection == Direction.LEFT)) && !IsJumping && Mathf.Abs(_inputVector.x) > 0) 
         {
             GrabEdge();
+        }
+        
+        // ATTACKS AND ETC
+        // Checking for attack
+        if(Input.GetButtonDown("Fire1") && ArzuedCollisionsScript.IsGrounded && !IsAttacking && !IsSliding && !IsHanging && !IsGrabbingEdge && !IsFalling && !IsJumping && _canAttack && !IsDashAttacking)
+        {
+            if (!IsDashing)
+            {
+                ArzuedRigidbody2D.velocity = Vector2.zero;
+                ArzuedRigidbody2D.bodyType = RigidbodyType2D.Static;
+                IsIdle = false;
+                CanMove = false;
+                IsMoving = false;
+                IsAttacking = true;
+            }
+        }
+        if(Input.GetButtonDown("Fire1") && CanDashAttack)
+        {
+            IsDashAttacking = true;
         }
     }
 
@@ -284,6 +455,8 @@ public class Arzued : MonoBehaviour
     }
     private void WallSlide()
     {
+        ResetDash();
+
         if (_inputVector.x != 0 && !_isWallJumping && ArzuedRigidbody2D.velocity.y <= 0) //!Input.GetButton("Jump"))
         {
             ArzuedRigidbody2D.velocity = Vector2.up * -_wallSlideSpeed;
@@ -291,6 +464,8 @@ public class Arzued : MonoBehaviour
     }
     private void WallJump()
     {
+        ResetDash();
+
         _isWallJumping = true;
         if (ArzuedCollisionsScript.IsOnLeftWall)
         {
@@ -313,6 +488,8 @@ public class Arzued : MonoBehaviour
     // Enumarators
     private void GrabEdge()
     {
+        ResetDash();
+
         _isFalling = false;
         _isWallSliding = false;
         _isMoving = false;
@@ -327,8 +504,60 @@ public class Arzued : MonoBehaviour
         ArzuedRigidbody2D.bodyType = RigidbodyType2D.Kinematic;
         ArzuedRigidbody2D.velocity = Vector2.zero;
     }
-
-    
+    private void DashJump()
+    {
+        _hasDashJumped = true;
+        ArzuedRigidbody2D.velocity = Vector2.zero;
+        ArzuedRigidbody2D.velocity += Vector2.up * 12f;
+    }
+    private void ResetDash()
+    {
+        _hasDashJumped = false;
+    }
+    private void Slide()
+    {
+        CanMove = false;
+        IsSliding = true;
+        StartCoroutine(StopSliding(_slideTime));
+    }
+    private void Dash()
+    {
+        CanMove = false;
+        CanAttack = false;
+        IsDashing = true;
+        CanDashAttack = true;
+        StartCoroutine(DashController());
+        //StartCoroutine(StopDashing(_dashTime));
+    }
+    private IEnumerator DashController()
+    {
+        while (!IsDashAttacking)
+        {
+            if (arzuedDirection == Direction.RIGHT)
+            {
+                ArzuedRigidbody2D.AddForce(Vector2.right * _dashImpulse, ForceMode2D.Impulse);
+            }
+            else
+            {
+                ArzuedRigidbody2D.AddForce(Vector2.left * _dashImpulse, ForceMode2D.Impulse);
+            }
+            //float temp = _moveSpeed;
+            //_moveSpeed = _dashSpeed;
+            yield return new WaitForSeconds(_dashAnimationTime);
+            IsDashing = false;
+            yield return new WaitForSeconds(_dashStopTime - _dashAnimationTime);
+            ArzuedRigidbody2D.velocity = Vector2.zero;
+            //_moveSpeed = temp;
+            yield break;
+        }
+        yield break;
+    }
+    private IEnumerator StopSliding(float slideTime)
+    {
+        yield return new WaitForSeconds(slideTime);
+        IsSliding = false;
+        yield break;    
+    }
     private IEnumerator DisableMovement(float time)
     {
         _canMove = false;
